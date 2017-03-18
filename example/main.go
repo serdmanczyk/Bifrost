@@ -13,18 +13,20 @@ import (
 )
 
 const (
-	defaultNumWorkers    int           = 10
-	defaultNumJobs       int           = 10000
-	defaultJobDuration   time.Duration = time.Microsecond
-	defaultJobExpiration time.Duration = time.Minute * 5
+	defaultNumWorkers     int           = 10
+	defaultNumJobs        int           = 10000
+	defaultJobDuration    time.Duration = time.Microsecond
+	defaultJobExpiration  time.Duration = time.Minute * 5
+	defaultReportInterval time.Duration = time.Millisecond * 200
 )
 
 var (
-	numWorkers  = flag.Int("workers", defaultNumWorkers, "number of workers to spawn")
-	numJobs     = flag.Int("jobs", defaultNumJobs, "number of jobs to create")
-	jobDuration = flag.Int64("jobduration", int64(defaultJobDuration), "How long jobs last (time.Sleep")
-	jobExpiry   = flag.Int64("expiration", int64(defaultJobExpiration), "How long until a finished job is purged")
-	report      = flag.Bool("report", false, "Print a report of all complete jobs")
+	numWorkers     = flag.Int("workers", defaultNumWorkers, "number of workers to spawn")
+	numJobs        = flag.Int("jobs", defaultNumJobs, "number of jobs to create")
+	jobDuration    = flag.Int64("jobduration", int64(defaultJobDuration), "How long jobs last (time.Sleep")
+	jobExpiry      = flag.Int64("expiration", int64(defaultJobExpiration), "How long until a finished job is purged")
+	report         = flag.Bool("report", false, "Report on random jobs while jobs are running")
+	reportInterval = flag.Int64("reportinterval", int64(defaultReportInterval), "Interval on which to report a random job's status (if report enabled)")
 )
 
 func init() {
@@ -50,14 +52,14 @@ func main() {
 
 	log.Printf("initialized %s\n", elapsed())
 
-	createJob := func(jobNum uint) func(*bifrost.Job) {
-		return func(j *bifrost.Job) {
+	createJob := func(jobNum uint) bifrost.JobRunner {
+		return bifrost.JobRunnerFunc(func(j *bifrost.Job) {
 			j.Log(fmt.Sprintf("%d: running", jobNum))
 			time.Sleep(time.Duration(*jobDuration))
 			j.Log(fmt.Sprintf("%d: stopped", jobNum))
 			wg.Done()
 			return
-		}
+		})
 	}
 
 	// internally dispatcher job id's increase monotonically
@@ -65,9 +67,9 @@ func main() {
 	// (sudoID may not match actual job ID because goroutines)
 	for sudoJobID := 0; sudoJobID < *numJobs; sudoJobID++ {
 		wg.Add(1)
-		go func(id uint) {
-			dispatcher.Queue(bifrost.JobRunnerFunc(createJob(id)))
-		}(uint(sudoJobID))
+		go func(id int) {
+			dispatcher.Queue(createJob(uint(id)))
+		}(sudoJobID)
 
 		jobIDs = append(jobIDs, sudoJobID)
 	}
@@ -84,7 +86,7 @@ func main() {
 	func() {
 		for {
 			select {
-			case <-time.After(time.Millisecond * 200):
+			case <-time.After(time.Duration(*reportInterval)):
 				if *report {
 					// Grab a random job and print its status
 					id := jobIDs[rand.Intn(len(jobIDs))]
