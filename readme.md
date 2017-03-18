@@ -4,7 +4,7 @@
 [![GoDoc](https://godoc.org/github.com/serdmanczyk/Bifrost?status.svg)](https://godoc.org/github.com/serdmanczyk/Bifrost)
 [![blog](https://img.shields.io/badge/readMy-blog-green.svg)](http://serdmanczyk.github.io)
 
-![gofrost](repo/gofrost.png "Freyr")
+![gofrost](repo/gofrost.jpg "Freyr")
 
 ## What?
 
