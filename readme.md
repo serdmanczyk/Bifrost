@@ -26,7 +26,7 @@ Lacks (might add these later):
     - Single process: this package does not include functionality to schedule jobs across multiple processes
                       via AMQP, gRPC, or otherwise.
 
-For an example, see the [test](dispatcher_test.go) or example [command line app](examples/main.go).
+For an example, see the [test](dispatcher_test.go) or example [command line app](example/main.go).
 
 Obligatory "not for use in production" but I do welcome feedback.
 
