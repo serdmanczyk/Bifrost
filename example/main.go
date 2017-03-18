@@ -61,7 +61,8 @@ func main() {
 	}
 
 	// internally dispatcher job id's increase monotonically
-	// from zero, so we can safely assume sudoJobID correlates
+	// from zero, so we can safely assume sudoJobID 'somewhat' correlates
+	// (sudoID may not match actual job ID because goroutines)
 	for sudoJobID := 0; sudoJobID < *numJobs; sudoJobID++ {
 		wg.Add(1)
 		go func(id uint) {

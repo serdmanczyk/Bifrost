@@ -4,6 +4,8 @@
 [![GoDoc](https://godoc.org/github.com/serdmanczyk/Bifrost?status.svg)](https://godoc.org/github.com/serdmanczyk/Bifrost)
 [![blog](https://img.shields.io/badge/readMy-blog-green.svg)](http://serdmanczyk.github.io)
 
+![gofrost](repo_files/gofrost.png "Freyr")
+
 ## What?
 
 If you've read the blog posts [Handling 1 Million Requests per Minute with Go](http://marcio.io/2015/07/handling-1-million-requests-per-minute-with-golang/) or [Writing worker queues, in Go](http://nesv.github.io/golang/2014/02/25/worker-queues-in-go.html) this will look very familiar.  The main machinery in Bifrost is basically identical to the functionality described in those blog posts, but with a couple added features I wanted for my project.

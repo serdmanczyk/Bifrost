@@ -58,7 +58,7 @@ type Job struct {
 	run      func()
 }
 
-// Logs is used to retreive a job's logs.
+// Logs is used to retrieve a job's logs.
 func (j *Job) Logs() []string {
 	j.lock.RLock()
 	defer j.lock.RUnlock()
@@ -93,11 +93,11 @@ func (j *Job) MarshalJSON() ([]byte, error) {
 	defer j.lock.RUnlock()
 
 	return json.Marshal(struct {
-		ID       uint      `json: "id"`
-		Complete bool      `json: "complete"`
-		Logs     []string  `json: "logs"`
-		Start    time.Time `json: "start"`
-		Finish   time.Time `json: "finish"`
+		ID       uint      `json:"id"`
+		Complete bool      `json:"complete"`
+		Logs     []string  `json:"logs"`
+		Start    time.Time `json:"start"`
+		Finish   time.Time `json:"finish"`
 	}{
 		j.ID,
 		j.complete,
