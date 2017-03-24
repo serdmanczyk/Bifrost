@@ -107,7 +107,7 @@ func TestDispatcher(t *testing.T) {
 	status = job.Status()
 	assert.Equal(t, status.Complete, true, "Job should be complete")
 	assert.Equal(t, status.Success, true, "Job be successful")
-	assert.Equal(t, status.Error, "", "Error should be blank (succesful)")
+	assert.Equal(t, status.Error, "", "Error should be blank (successful)")
 
 	wg.Add(1)
 	job = d.QueueFunc(jobfunc)
