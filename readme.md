@@ -1,4 +1,4 @@
- ᛉ Bifröst - query-able in-process worker queue
+ ᛉ Bifröst - a queryable in-process worker queue
 ------
 [![Go Report Card](https://goreportcard.com/badge/github.com/serdmanczyk/Bifrost)](https://goreportcard.com/report/github.com/serdmanczyk/Bifrost)
 [![GoDoc](https://godoc.org/github.com/serdmanczyk/Bifrost?status.svg)](https://godoc.org/github.com/serdmanczyk/Bifrost)
