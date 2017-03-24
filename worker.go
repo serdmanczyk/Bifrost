@@ -1,24 +1,21 @@
 package bifrost
 
-import "time"
-
-func newWorker(workQueue chan chan *Job) *worker {
+func newWorker(workQueue chan chan *job) *worker {
 	return &worker{
 		workQueue: workQueue,
-		work:      make(chan *Job),
+		work:      make(chan *job),
 		stop:      make(chan bool),
 	}
 }
 
 type worker struct {
-	workQueue chan chan *Job
-	work      chan *Job
+	workQueue chan chan *job
+	work      chan *job
 	stop      chan bool
 }
 
 func (w *worker) start() {
 	go func() {
-
 		for {
 			select {
 			case w.workQueue <- w.work:
@@ -28,8 +25,6 @@ func (w *worker) start() {
 				w.stop <- true
 				close(w.stop)
 				return
-			case <-time.After(time.Millisecond):
-				continue
 			}
 		}
 	}()

@@ -13,12 +13,12 @@ const (
 	jobMapCapMargin   int           = 5
 )
 
-// NewDispatcher create a new Dispatcher.
+// NewDispatcher create a new Dispatcher and initializes its workers.
 func NewDispatcher(opts ...DispatcherOpt) *Dispatcher {
 	d := &Dispatcher{
 		numWorkers:  defaultNumWorkers,
 		jobExpiry:   defaultJobExpiry,
-		workerQueue: make(chan chan *Job),
+		workerQueue: make(chan chan *job),
 		stop:        make(chan bool),
 	}
 
@@ -27,8 +27,8 @@ func NewDispatcher(opts ...DispatcherOpt) *Dispatcher {
 	}
 
 	d.workers = make([]*worker, 0, d.numWorkers)
-	d.jobchan = make(chan *Job, d.numWorkers*jobChanMargin)
-	d.jobsMap = make(map[uint]*Job, d.numWorkers*jobMapCapMargin)
+	d.jobchan = make(chan *job, d.numWorkers*jobChanMargin)
+	d.jobsMap = make(map[uint]JobTracker, d.numWorkers*jobMapCapMargin)
 
 	for i := 0; i < d.numWorkers; i++ {
 		worker := newWorker(d.workerQueue)
@@ -39,27 +39,26 @@ func NewDispatcher(opts ...DispatcherOpt) *Dispatcher {
 	return d
 }
 
-// Dispatcher is used to maintain and delegate work
-// via Jobs to delegate workers.
+// Dispatcher is used to maintain and delegate jobs to workers.
 type Dispatcher struct {
-	workerQueue chan chan *Job
-	jobchan     chan *Job
+	workerQueue chan chan *job
+	jobchan     chan *job
 	stop        chan bool
 	numWorkers  int
 	currID      uint
 	jobExpiry   time.Duration
 	workers     []*worker
-	jobsMap     map[uint]*Job
+	jobsMap     map[uint]JobTracker
 	mapLock     sync.RWMutex
 }
 
 func (d *Dispatcher) start() {
-	auditTicker := time.NewTicker(time.Second)
+	auditTicker := time.NewTicker(d.jobExpiry)
 	go func() {
 		for {
 			select {
 			case j := <-d.jobchan:
-				go func(j *Job) {
+				go func(j *job) {
 					worker := <-d.workerQueue
 					worker <- j
 				}(j)
@@ -101,9 +100,9 @@ func (d *Dispatcher) jobMapAudit() {
 
 	d.mapLock.RLock()
 	for id, job := range d.jobsMap {
-		finished, _, stopTime := job.Done()
+		status := job.Status()
 
-		if finished && time.Now().Sub(stopTime) > d.jobExpiry {
+		if status.Complete && time.Now().Sub(status.Finish) > d.jobExpiry {
 			remIDs = append(remIDs, id)
 		}
 	}
@@ -118,42 +117,47 @@ func (d *Dispatcher) jobMapAudit() {
 	}
 }
 
-// Queue takes any implementer of the JobRunner interface
-// and schedules it to be run via a worker.
-func (d *Dispatcher) Queue(j JobRunner) *Job {
+// Queue takes an implementer of the JobRunner interface and schedules it to
+// be run via a worker.
+func (d *Dispatcher) Queue(j JobRunner) JobTracker {
 	d.mapLock.Lock()
 	defer d.mapLock.Unlock()
 
 	job := newJob(j, d.currID)
-	d.jobsMap[job.ID] = job
+	d.jobsMap[job.id] = job
 	d.currID++
 	d.jobchan <- job
 
 	return job
 }
 
+// QueueFunc is a convenience function for queuing a JobRunnerFunc
+func (d *Dispatcher) QueueFunc(j JobRunnerFunc) JobTracker {
+	return d.Queue(JobRunner(j))
+}
+
 // GetJobs returns all currently managed jobs
-func (d *Dispatcher) GetJobs() (jobs []*Job) {
+func (d *Dispatcher) GetJobs() JobTrackers {
 	d.mapLock.RLock()
 	defer d.mapLock.RUnlock()
 
+	var trackers JobTrackers
 	for _, job := range d.jobsMap {
-		jobs = append(jobs, job)
+		trackers = append(trackers, job)
 	}
 
-	return jobs
+	return trackers
 }
 
-// Status returns the Job for the given jobID.  The Job
-// can be used to determine completion, success, and to
-// view messages logged to the job.
-func (d *Dispatcher) Status(jobID uint) (*Job, error) {
+// Status returns a JobTracker for the given jobID.  The JobTracker interface
+// can be used to query status.
+func (d *Dispatcher) Status(jobID uint) (JobTracker, error) {
 	d.mapLock.RLock()
 	defer d.mapLock.RUnlock()
 
 	job, ok := d.jobsMap[jobID]
 	if !ok {
-		return job, fmt.Errorf("Job %d not found", jobID)
+		return nil, fmt.Errorf("Job %d not found", jobID)
 	}
 
 	return job, nil

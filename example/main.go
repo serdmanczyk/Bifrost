@@ -43,7 +43,7 @@ func main() {
 	}()
 
 	var wg sync.WaitGroup
-	jobIDs := make([]int, 0, *numJobs)
+	jobIDs := make([]uint, 0, *numJobs)
 
 	dispatcher := bifrost.NewDispatcher(
 		bifrost.Workers(*numWorkers),
@@ -52,26 +52,22 @@ func main() {
 
 	log.Printf("initialized %s\n", elapsed())
 
-	createJob := func(jobNum uint) bifrost.JobRunner {
-		return bifrost.JobRunnerFunc(func(j *bifrost.Job) {
-			j.Log(fmt.Sprintf("%d: running", jobNum))
-			time.Sleep(time.Duration(*jobDuration))
-			j.Log(fmt.Sprintf("%d: stopped", jobNum))
-			wg.Done()
-			return
-		})
+	jobFunc := func() error {
+		defer wg.Done()
+
+		time.Sleep(time.Duration(*jobDuration))
+		if rand.Float32() > 0.5 {
+			return fmt.Errorf("The odds are not in your favor")
+		}
+
+		return nil
 	}
 
-	// internally dispatcher job id's increase monotonically
-	// from zero, so we can safely assume sudoJobID 'somewhat' correlates
-	// (sudoID may not match actual job ID because goroutines)
-	for sudoJobID := 0; sudoJobID < *numJobs; sudoJobID++ {
+	for i := 0; i < *numJobs; i++ {
 		wg.Add(1)
-		go func(id int) {
-			dispatcher.Queue(createJob(uint(id)))
-		}(sudoJobID)
-
-		jobIDs = append(jobIDs, sudoJobID)
+		job := dispatcher.QueueFunc(jobFunc)
+		id := job.ID()
+		jobIDs = append(jobIDs, id)
 	}
 	log.Printf("queued %s\n", elapsed())
 
@@ -83,24 +79,26 @@ func main() {
 		close(done)
 	}()
 
-	func() {
-		for {
-			select {
-			case <-time.After(time.Duration(*reportInterval)):
-				if *report {
-					// Grab a random job and print its status
-					id := jobIDs[rand.Intn(len(jobIDs))]
-					job, err := dispatcher.Status(uint(id))
-					if err != nil {
-						// ignore, job may have been purged
-						continue
-					}
-					json.NewEncoder(os.Stdout).Encode(&job)
+	for {
+		select {
+		case <-time.After(time.Duration(*reportInterval)):
+			if *report {
+				// Grab a random job and print its status
+				id := jobIDs[rand.Intn(len(jobIDs))]
+				job, err := dispatcher.Status(id)
+				if err != nil {
+					// ignore, job may have been purged
+					continue
 				}
-			case <-done:
-				return
+				status := job.Status()
+				json.NewEncoder(os.Stdout).Encode(&status)
+				<-job.Done()
 			}
+		case <-done:
+			goto complete
 		}
-	}()
+	}
+
+complete:
 	log.Printf("done %s\n", elapsed())
 }
