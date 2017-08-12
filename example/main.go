@@ -45,7 +45,7 @@ func main() {
 	var wg sync.WaitGroup
 	jobIDs := make([]uint, 0, *numJobs)
 
-	dispatcher := bifrost.NewDispatcher(
+	dispatcher := bifrost.NewWorkerDispatcher(
 		bifrost.Workers(*numWorkers),
 		bifrost.JobExpiry(time.Duration(*jobExpiry)),
 	)
@@ -85,7 +85,7 @@ func main() {
 			if *report {
 				// Grab a random job and print its status
 				id := jobIDs[rand.Intn(len(jobIDs))]
-				job, err := dispatcher.Status(id)
+				job, err := dispatcher.JobStatus(id)
 				if err != nil {
 					// ignore, job may have been purged
 					continue

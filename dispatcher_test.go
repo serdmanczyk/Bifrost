@@ -14,7 +14,7 @@ import (
 // for godoc
 func ExampleDispatcher() {
 	stdoutWriter := json.NewEncoder(os.Stdout)
-	dispatcher := NewDispatcher(
+	dispatcher := NewWorkerDispatcher(
 		Workers(4),
 		JobExpiry(time.Millisecond),
 	)
@@ -56,13 +56,13 @@ func ExampleDispatcher() {
 	// {"ID":2,"Complete":true,"Success":false,"Error":"Failed","Start":"2017-03-23T21:51:27.141026625-07:00","Finish":"2017-03-23T21:51:27.141079871-07:00"}
 
 	// Query for a job's status.
-	tracker, _ = dispatcher.Status(tracker.ID())
+	tracker, _ = dispatcher.JobStatus(tracker.ID())
 	status = tracker.Status()
 	stdoutWriter.Encode(&status)
 	// {"ID":2,"Complete":true,"Success":false,"Error":"Failed","Start":"2017-03-23T21:51:27.141026625-07:00","Finish":"2017-03-23T21:51:27.141079871-07:00"}
 
 	// Show all jobs
-	jobs := dispatcher.GetJobs()
+	jobs := dispatcher.Jobs()
 	stdoutWriter.Encode(jobs)
 	// [{"ID":2,"Complete":true,"Success":false,"Error":"Failed","Start":"2017-03-23T21:51:27.141026625-07:00","Finish":"2017-03-23T21:51:27.141079871-07:00"},{"ID":0,"Complete":true,"Success":true,"Start":"2017-03-23T21:51:27.140681968-07:00","Finish":"2017-03-23T21:51:27.140830827-07:00"},{"ID":1,"Complete":true,"Success":true,"Start":"2017-03-23T21:51:27.140684331-07:00","Finish":"2017-03-23T21:51:27.140873087-07:00"}]
 
@@ -70,7 +70,7 @@ func ExampleDispatcher() {
 	time.Sleep(time.Millisecond * 5)
 
 	// should now be empty
-	jobs = dispatcher.GetJobs()
+	jobs = dispatcher.Jobs()
 	stdoutWriter.Encode(jobs)
 	// []
 
@@ -84,7 +84,7 @@ func TestDispatcher(t *testing.T) {
 	const numJobs int64 = 20
 	var wg sync.WaitGroup
 
-	d := NewDispatcher(
+	d := NewWorkerDispatcher(
 		Workers(numWorkers),
 		JobExpiry(time.Second),
 	)

@@ -13,9 +13,30 @@ const (
 	jobMapCapMargin   int           = 5
 )
 
+// JobDispatcher defines an interface for dispatching jobs
+type JobDispatcher interface {
+	JobStatus(jobID uint) (JobTracker, error)
+	Jobs() JobTrackers
+	Queue(j JobRunner) JobTracker
+	QueueFunc(j JobRunnerFunc) JobTracker
+}
+
+// WorkerDispatcher is used to maintain and delegate jobs to workers.
+type WorkerDispatcher struct {
+	workerQueue chan chan *job
+	jobchan     chan *job
+	stop        chan bool
+	numWorkers  int
+	currID      uint
+	jobExpiry   time.Duration
+	workers     []*worker
+	jobsMap     map[uint]JobTracker
+	mapLock     sync.RWMutex
+}
+
 // NewDispatcher create a new Dispatcher and initializes its workers.
-func NewDispatcher(opts ...DispatcherOpt) *Dispatcher {
-	d := &Dispatcher{
+func NewWorkerDispatcher(opts ...WorkerDispatcherOpt) *WorkerDispatcher {
+	d := &WorkerDispatcher{
 		numWorkers:  defaultNumWorkers,
 		jobExpiry:   defaultJobExpiry,
 		workerQueue: make(chan chan *job),
@@ -39,20 +60,7 @@ func NewDispatcher(opts ...DispatcherOpt) *Dispatcher {
 	return d
 }
 
-// Dispatcher is used to maintain and delegate jobs to workers.
-type Dispatcher struct {
-	workerQueue chan chan *job
-	jobchan     chan *job
-	stop        chan bool
-	numWorkers  int
-	currID      uint
-	jobExpiry   time.Duration
-	workers     []*worker
-	jobsMap     map[uint]JobTracker
-	mapLock     sync.RWMutex
-}
-
-func (d *Dispatcher) start() {
+func (d *WorkerDispatcher) start() {
 	auditTicker := time.NewTicker(d.jobExpiry)
 	go func() {
 		for {
@@ -74,7 +82,7 @@ func (d *Dispatcher) start() {
 	}()
 }
 
-func (d *Dispatcher) stopWorkers() {
+func (d *WorkerDispatcher) stopWorkers() {
 	stopChans := make([]chan bool, 0, len(d.workers))
 
 	// signal all workers to finish what they're doing
@@ -90,12 +98,12 @@ func (d *Dispatcher) stopWorkers() {
 
 // Stop signals all workers to stop running their current
 // jobs, waits for them to finish, then returns.
-func (d *Dispatcher) Stop() {
+func (d *WorkerDispatcher) Stop() {
 	d.stop <- true
 	<-d.stop
 }
 
-func (d *Dispatcher) jobMapAudit() {
+func (d *WorkerDispatcher) jobMapAudit() {
 	remIDs := make([]uint, 0, jobMapCapMargin)
 
 	d.mapLock.RLock()
@@ -119,7 +127,7 @@ func (d *Dispatcher) jobMapAudit() {
 
 // Queue takes an implementer of the JobRunner interface and schedules it to
 // be run via a worker.
-func (d *Dispatcher) Queue(j JobRunner) JobTracker {
+func (d *WorkerDispatcher) Queue(j JobRunner) JobTracker {
 	d.mapLock.Lock()
 	defer d.mapLock.Unlock()
 
@@ -132,12 +140,12 @@ func (d *Dispatcher) Queue(j JobRunner) JobTracker {
 }
 
 // QueueFunc is a convenience function for queuing a JobRunnerFunc
-func (d *Dispatcher) QueueFunc(j JobRunnerFunc) JobTracker {
+func (d *WorkerDispatcher) QueueFunc(j JobRunnerFunc) JobTracker {
 	return d.Queue(JobRunner(j))
 }
 
-// GetJobs returns all currently managed jobs
-func (d *Dispatcher) GetJobs() JobTrackers {
+// Jobs returns all currently managed jobs
+func (d *WorkerDispatcher) Jobs() JobTrackers {
 	d.mapLock.RLock()
 	defer d.mapLock.RUnlock()
 
@@ -149,9 +157,9 @@ func (d *Dispatcher) GetJobs() JobTrackers {
 	return trackers
 }
 
-// Status returns a JobTracker for the given jobID.  The JobTracker interface
+// JobStatus returns a JobTracker for the given jobID.  The JobTracker interface
 // can be used to query status.
-func (d *Dispatcher) Status(jobID uint) (JobTracker, error) {
+func (d *WorkerDispatcher) JobStatus(jobID uint) (JobTracker, error) {
 	d.mapLock.RLock()
 	defer d.mapLock.RUnlock()
 

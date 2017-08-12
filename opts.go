@@ -4,13 +4,13 @@ import (
 	"time"
 )
 
-// DispatcherOpt is a function type for
-// configuring new Dispatchers
-type DispatcherOpt func(*Dispatcher)
+// WorkerDispatcherOpt is a function type for
+// configuring new WorkerDispatchers
+type WorkerDispatcherOpt func(*WorkerDispatcher)
 
 // Workers sets the number of workers to spawn
-func Workers(numWorkers int) DispatcherOpt {
-	return func(d *Dispatcher) {
+func Workers(numWorkers int) WorkerDispatcherOpt {
+	return func(d *WorkerDispatcher) {
 		d.numWorkers = numWorkers
 	}
 }
@@ -21,8 +21,8 @@ func Workers(numWorkers int) DispatcherOpt {
 //	Note: JobExpiry only controls the purge of FINISHED jobs.
 //	There is currently not a provision for stopping a running
 //	job that has continued to run beyond its expected duration.
-func JobExpiry(expiry time.Duration) DispatcherOpt {
-	return func(d *Dispatcher) {
+func JobExpiry(expiry time.Duration) WorkerDispatcherOpt {
+	return func(d *WorkerDispatcher) {
 		d.jobExpiry = expiry
 	}
 }
