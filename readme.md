@@ -21,7 +21,7 @@ import (
 
 func main() {
     stdoutWriter := json.NewEncoder(os.Stdout)
-    dispatcher := bifrost.NewDispatcher(
+    dispatcher := bifrost.NewWorkerDispatcher(
         bifrost.Workers(4),
         bifrost.JobExpiry(time.Millisecond),
     )
@@ -63,13 +63,13 @@ func main() {
     // {"ID":2,"Complete":true,"Success":false,"Error":"Failed","Start":"2017-03-23T21:51:27.141026625-07:00","Finish":"2017-03-23T21:51:27.141079871-07:00"}
 
     // Query for a job's status.
-    tracker, _ = dispatcher.Status(tracker.ID())
+    tracker, _ = dispatcher.JobStatus(tracker.ID())
     status = tracker.Status()
     stdoutWriter.Encode(&status)
     // {"ID":2,"Complete":true,"Success":false,"Error":"Failed","Start":"2017-03-23T21:51:27.141026625-07:00","Finish":"2017-03-23T21:51:27.141079871-07:00"}
 
     // Show all jobs
-    jobs := dispatcher.GetJobs()
+    jobs := dispatcher.Jobs()
     stdoutWriter.Encode(jobs)
     // [{"ID":2,"Complete":true,"Success":false,"Error":"Failed","Start":"2017-03-23T21:51:27.141026625-07:00","Finish":"2017-03-23T21:51:27.141079871-07:00"},{"ID":0,"Complete":true,"Success":true,"Start":"2017-03-23T21:51:27.140681968-07:00","Finish":"2017-03-23T21:51:27.140830827-07:00"},{"ID":1,"Complete":true,"Success":true,"Start":"2017-03-23T21:51:27.140684331-07:00","Finish":"2017-03-23T21:51:27.140873087-07:00"}]
 
@@ -77,7 +77,7 @@ func main() {
     time.Sleep(time.Millisecond * 5)
 
     // should now be empty
-    jobs = dispatcher.GetJobs()
+    jobs = dispatcher.Jobs()
     stdoutWriter.Encode(jobs)
     // []
 
