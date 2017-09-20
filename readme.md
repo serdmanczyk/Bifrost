@@ -4,7 +4,7 @@
 [![GoDoc](https://godoc.org/github.com/serdmanczyk/Bifrost?status.svg)](https://godoc.org/github.com/serdmanczyk/Bifrost)
 [![blog](https://img.shields.io/badge/readMy-blog-green.svg)](http://serdmanczyk.github.io)
 
-![gofrost](repo/gofrost.jpg "Freyr")
+![gofrost](repo/vikgopher.gif "BiFrost")
 
 Package bifrost contains functionality to create an in-process job queue with a configurable number of goroutine via workers.  It also includes the ability to query scheduled jobs for status (completed jobs are purged at a configurable interval)
 
